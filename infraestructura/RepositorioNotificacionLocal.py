@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List
 from aplicacion.puertos.RepositorioNotificacion import RepositorioNotificacion
 
 try:
@@ -25,7 +25,7 @@ class RepositorioNotificacionLocal(RepositorioNotificacion):
         notif_id = str(getattr(notificacion, "id", ""))
         self._datos[notif_id] = notificacion
 
-    def buscarPorId(self, id: str) -> Optional[Notificacion]:
+    def buscarPorId(self, id: str) -> Notificacion:
         return self._datos.get(str(id))
 
     def obtenerTodos(self) -> List[Notificacion]:

@@ -1,6 +1,5 @@
 import sqlite3
-from typing import List, Optional, Union
-from uuid import UUID
+from typing import List, Union
 from decimal import Decimal
 
 from aplicacion.puertos.RepositorioMulta import RepositorioMulta
@@ -46,11 +45,6 @@ class RepositorioMultaSQLite(RepositorioMulta):
                 conn.close()
 
     def _reconstruir_multa(self, row: sqlite3.Row) -> Multa:
-        try:
-            id_uuid = UUID(str(row["id"]))
-        except Exception:
-            id_uuid = row["id"]
-
         estado_raw = row["estado"]
         try:
             estado = EstadoMulta(estado_raw)
@@ -64,13 +58,13 @@ class RepositorioMultaSQLite(RepositorioMulta):
         total_dec = Decimal(str(row["total"]))
 
         return Multa(
-            id_multa=id_uuid,
+            id_multa=str(row["id"]),
             tarifa=tarifa_dec,
             total=total_dec,
             estado=estado,
         )
 
-    def buscar_por_id(self, id: Union[str, UUID]) -> Optional[Multa]:
+    def buscar_por_id(self, id: str) -> Multa:
         """Busca una multa por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()
@@ -88,7 +82,7 @@ class RepositorioMultaSQLite(RepositorioMulta):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def buscarPorId(self, id: Union[str, UUID]) -> Optional[Multa]:
+    def buscarPorId(self, id: str) -> Multa:
         """Alias para cumplir con la interfaz del puerto RepositorioMulta."""
         return self.buscar_por_id(id)
 
@@ -108,7 +102,7 @@ class RepositorioMultaSQLite(RepositorioMulta):
         """Alias para cumplir con la interfaz del puerto RepositorioMulta."""
         return self.obtener_todos()
 
-    def eliminar(self, id: Union[str, UUID]) -> None:
+    def eliminar(self, id: str) -> None:
         """Elimina una multa por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()
@@ -119,7 +113,7 @@ class RepositorioMultaSQLite(RepositorioMulta):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def tiene_multas_pendientes(self, id_estudiante: Union[str, UUID]) -> bool:
+    def tiene_multas_pendientes(self, id_estudiante: str) -> bool:
         """Retorna True si el estudiante tiene al menos una multa en estado PENDIENTE."""
         id_str = str(id_estudiante)
         conn = self._get_connection()

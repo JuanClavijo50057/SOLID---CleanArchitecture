@@ -1,6 +1,5 @@
 import sqlite3
-from typing import List, Optional, Union
-from uuid import UUID
+from typing import List, Union
 
 from aplicacion.puertos.RepositorioNotificacion import RepositorioNotificacion
 from infraestructura.ConexionSQLite import ConexionSQLite
@@ -12,7 +11,7 @@ except ImportError:
         """Clase de dominio Notificacion (fallback si no está disponible en dominio)."""
         def __init__(
             self,
-            id_notificacion: Optional[Union[str, UUID]] = None,
+            id_notificacion: str = "",
             destinatario: str = "",
             mensaje: str = "",
             fecha: str = "",
@@ -63,10 +62,7 @@ class RepositorioNotificacionSQLite(RepositorioNotificacion):
                 conn.close()
 
     def _reconstruir_notificacion(self, row: sqlite3.Row) -> Notificacion:
-        try:
-            id_val = UUID(str(row["id"]))
-        except Exception:
-            id_val = row["id"]
+        id_val = str(row["id"])
 
         try:
             return Notificacion(
@@ -85,7 +81,7 @@ class RepositorioNotificacionSQLite(RepositorioNotificacion):
                 tipo=row["tipo"],
             )
 
-    def buscar_por_id(self, id: Union[str, UUID]) -> Optional[Notificacion]:
+    def buscar_por_id(self, id: str) -> Notificacion:
         """Busca una notificación por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()
@@ -103,7 +99,7 @@ class RepositorioNotificacionSQLite(RepositorioNotificacion):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def buscarPorId(self, id: Union[str, UUID]) -> Optional[Notificacion]:
+    def buscarPorId(self, id: str) -> Notificacion:
         """Alias para cumplir con la interfaz del puerto RepositorioNotificacion."""
         return self.buscar_por_id(id)
 
@@ -123,7 +119,7 @@ class RepositorioNotificacionSQLite(RepositorioNotificacion):
         """Alias para cumplir con la interfaz del puerto RepositorioNotificacion."""
         return self.obtener_todos()
 
-    def eliminar(self, id: Union[str, UUID]) -> None:
+    def eliminar(self, id: str) -> None:
         """Elimina una notificación por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()

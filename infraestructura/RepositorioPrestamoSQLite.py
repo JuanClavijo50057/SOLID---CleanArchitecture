@@ -1,6 +1,5 @@
 import sqlite3
-from typing import List, Optional, Union
-from uuid import UUID
+from typing import List, Union
 from datetime import date
 from decimal import Decimal
 
@@ -20,7 +19,7 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
     def __init__(
         self,
         conexion_o_path: Union[str, ConexionSQLite] = "sistema_prestamos.db",
-        repo_equipo: Optional[RepositorioEquipo] = None,
+        repo_equipo: RepositorioEquipo = None,
     ):
         if isinstance(conexion_o_path, ConexionSQLite):
             self.conexion_sqlite = conexion_o_path
@@ -110,21 +109,12 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
                 conn.close()
 
     def _reconstruir_prestamo(self, row: sqlite3.Row) -> Prestamo:
-        try:
-            id_uuid = UUID(str(row["id"]))
-        except Exception:
-            id_uuid = row["id"]
-
         equipo_id = row["equipo_id"]
         equipo = self.repo_equipo.buscar_por_id(equipo_id)
         if equipo is None:
             from dominio.Portatil import Portatil
 
-            try:
-                eq_uuid = UUID(str(equipo_id))
-            except Exception:
-                eq_uuid = equipo_id
-            equipo = Portatil(id_equipo=eq_uuid)
+            equipo = Portatil(id_equipo=str(equipo_id))
 
         fecha_ini = date.fromisoformat(row["fecha_inicial"])
         fecha_lim = date.fromisoformat(row["fecha_limite"])
@@ -139,7 +129,7 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
                 estado = EstadoPrestamo.ACTIVO
 
         prestamo = Prestamo(
-            id_prestamo=id_uuid,
+            id_prestamo=str(row["id"]),
             equipo=equipo,
             fecha_inicial=fecha_ini,
             fecha_limite=fecha_lim,
@@ -154,7 +144,7 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
             prestamo.multa_id = row["multa_id"]
         return prestamo
 
-    def buscar_por_id(self, id: Union[str, UUID]) -> Optional[Prestamo]:
+    def buscar_por_id(self, id: str) -> Prestamo:
         """Busca un préstamo por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()
@@ -177,7 +167,7 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def buscarPorId(self, id: Union[str, UUID]) -> Optional[Prestamo]:
+    def buscarPorId(self, id: str) -> Prestamo:
         """Alias para cumplir con la interfaz del puerto RepositorioPrestamo."""
         return self.buscar_por_id(id)
 
@@ -203,7 +193,7 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
         """Alias para cumplir con la interfaz del puerto RepositorioPrestamo."""
         return self.obtener_todos()
 
-    def eliminar(self, id: Union[str, UUID]) -> None:
+    def eliminar(self, id: str) -> None:
         """Elimina un préstamo por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()
@@ -214,7 +204,7 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def obtener_activos_por_estudiante(self, id_estudiante: Union[str, UUID]) -> List[Prestamo]:
+    def obtener_activos_por_estudiante(self, id_estudiante: str) -> List[Prestamo]:
         """Retorna la lista de préstamos activos de un estudiante."""
         id_str = str(id_estudiante)
         conn = self._get_connection()
@@ -235,7 +225,7 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def tiene_multas_pendientes(self, id_estudiante: Union[str, UUID]) -> bool:
+    def tiene_multas_pendientes(self, id_estudiante: str) -> bool:
         """Retorna True si el estudiante tiene al menos una multa pendiente."""
         id_str = str(id_estudiante)
         conn = self._get_connection()

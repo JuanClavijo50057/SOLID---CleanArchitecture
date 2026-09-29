@@ -1,6 +1,5 @@
 import sqlite3
-from typing import List, Optional, Union
-from uuid import UUID
+from typing import List, Union
 
 from aplicacion.puertos.RepositorioEstudiante import RepositorioEstudiante
 from infraestructura.ConexionSQLite import ConexionSQLite
@@ -43,19 +42,14 @@ class RepositorioEstudianteSQLite(RepositorioEstudiante):
                 conn.close()
 
     def _reconstruir_estudiante(self, row: sqlite3.Row) -> Estudiante:
-        try:
-            id_uuid = UUID(str(row["id"]))
-        except Exception:
-            id_uuid = row["id"]
-
         return Estudiante(
-            id_estudiante=id_uuid,
+            id_estudiante=str(row["id"]),
             nombre=row["nombre"],
             codigo=row["codigo"],
             correo=row["correo"],
         )
 
-    def buscar_por_id(self, id: Union[str, UUID]) -> Optional[Estudiante]:
+    def buscar_por_id(self, id: str) -> Estudiante:
         """Busca un estudiante por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()
@@ -73,7 +67,7 @@ class RepositorioEstudianteSQLite(RepositorioEstudiante):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def buscarPorId(self, id: Union[str, UUID]) -> Optional[Estudiante]:
+    def buscarPorId(self, id: str) -> Estudiante:
         """Alias para cumplir con la interfaz del puerto RepositorioEstudiante."""
         return self.buscar_por_id(id)
 
@@ -93,7 +87,7 @@ class RepositorioEstudianteSQLite(RepositorioEstudiante):
         """Alias para cumplir con la interfaz del puerto RepositorioEstudiante."""
         return self.obtener_todos()
 
-    def eliminar(self, id: Union[str, UUID]) -> None:
+    def eliminar(self, id: str) -> None:
         """Elimina un estudiante por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()

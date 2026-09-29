@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List
 from aplicacion.puertos.RepositorioEquipo import RepositorioEquipo
 from dominio.Equipo import Equipo
 
@@ -15,7 +15,7 @@ class RepositorioEquipoLocal(RepositorioEquipo):
         eq_id = str(getattr(equipo, "id_equipo", getattr(equipo, "id", "")))
         self._datos[eq_id] = equipo
 
-    def buscarPorId(self, id: str) -> Optional[Equipo]:
+    def buscarPorId(self, id: str) -> Equipo:
         return self._datos.get(str(id))
 
     def obtenerTodos(self) -> List[Equipo]:

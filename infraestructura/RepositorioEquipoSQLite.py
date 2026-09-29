@@ -1,6 +1,5 @@
 import sqlite3
-from typing import List, Optional, Union
-from uuid import UUID
+from typing import List, Union
 
 from aplicacion.puertos.RepositorioEquipo import RepositorioEquipo
 from infraestructura.ConexionSQLite import ConexionSQLite
@@ -25,7 +24,7 @@ class RepositorioEquipoSQLite(RepositorioEquipo):
     def _get_connection(self) -> sqlite3.Connection:
         return self.conexion_sqlite.obtener_conexion()
 
-    def _crear_instancia(self, tipo: str, id_equipo: UUID, estado: EstadoEquipo) -> Equipo:
+    def _crear_instancia(self, tipo: str, id_equipo: str, estado: EstadoEquipo) -> Equipo:
         tipo_normalizado = tipo.strip().lower().replace(" ", "").replace("_", "")
         if "portatil" in tipo_normalizado or "laptop" in tipo_normalizado:
             return Portatil(id_equipo=id_equipo, estado=estado)
@@ -60,7 +59,7 @@ class RepositorioEquipoSQLite(RepositorioEquipo):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def buscar_por_id(self, id: Union[str, UUID]) -> Optional[Equipo]:
+    def buscar_por_id(self, id: str) -> Equipo:
         """Busca un equipo por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()
@@ -74,11 +73,6 @@ class RepositorioEquipoSQLite(RepositorioEquipo):
             if row is None:
                 return None
 
-            try:
-                id_uuid = UUID(str(row["id"]))
-            except Exception:
-                id_uuid = row["id"]
-
             estado_raw = row["estado"]
             try:
                 estado = EstadoEquipo(estado_raw)
@@ -90,14 +84,14 @@ class RepositorioEquipoSQLite(RepositorioEquipo):
 
             return self._crear_instancia(
                 tipo=row["tipo"],
-                id_equipo=id_uuid,
+                id_equipo=str(row["id"]),
                 estado=estado,
             )
         finally:
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def buscarPorId(self, id: Union[str, UUID]) -> Optional[Equipo]:
+    def buscarPorId(self, id: str) -> Equipo:
         """Alias para cumplir con la interfaz del puerto RepositorioEquipo."""
         return self.buscar_por_id(id)
 
@@ -110,11 +104,6 @@ class RepositorioEquipoSQLite(RepositorioEquipo):
             cursor.execute("SELECT id, tipo, estado FROM equipos")
             rows = cursor.fetchall()
             for row in rows:
-                try:
-                    id_uuid = UUID(str(row["id"]))
-                except Exception:
-                    id_uuid = row["id"]
-
                 estado_raw = row["estado"]
                 try:
                     estado = EstadoEquipo(estado_raw)
@@ -127,7 +116,7 @@ class RepositorioEquipoSQLite(RepositorioEquipo):
                 equipos.append(
                     self._crear_instancia(
                         tipo=row["tipo"],
-                        id_equipo=id_uuid,
+                        id_equipo=str(row["id"]),
                         estado=estado,
                     )
                 )
@@ -140,7 +129,7 @@ class RepositorioEquipoSQLite(RepositorioEquipo):
         """Alias para cumplir con la interfaz del puerto RepositorioEquipo."""
         return self.obtener_todos()
 
-    def eliminar(self, id: Union[str, UUID]) -> None:
+    def eliminar(self, id: str) -> None:
         """Elimina un equipo por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()

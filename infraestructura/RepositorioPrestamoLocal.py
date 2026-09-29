@@ -1,5 +1,4 @@
-from typing import Dict, List, Optional, Union
-from uuid import UUID
+from typing import Dict, List
 from aplicacion.puertos.RepositorioPrestamo import RepositorioPrestamo
 from dominio.Prestamo import Prestamo
 from dominio.Enums import EstadoPrestamo, EstadoMulta
@@ -17,10 +16,10 @@ class RepositorioPrestamoLocal(RepositorioPrestamo):
         p_id = str(prestamo.id)
         self._datos[p_id] = prestamo
 
-    def buscar_por_id(self, id: Union[str, UUID]) -> Optional[Prestamo]:
+    def buscar_por_id(self, id: str) -> Prestamo:
         return self._datos.get(str(id))
 
-    def buscarPorId(self, id: Union[str, UUID]) -> Optional[Prestamo]:
+    def buscarPorId(self, id: str) -> Prestamo:
         return self.buscar_por_id(id)
 
     def obtener_todos(self) -> List[Prestamo]:
@@ -29,12 +28,12 @@ class RepositorioPrestamoLocal(RepositorioPrestamo):
     def obtenerTodos(self) -> List[Prestamo]:
         return self.obtener_todos()
 
-    def eliminar(self, id: Union[str, UUID]) -> None:
+    def eliminar(self, id: str) -> None:
         id_str = str(id)
         if id_str in self._datos:
             del self._datos[id_str]
 
-    def obtener_activos_por_estudiante(self, id_estudiante: Union[str, UUID]) -> List[Prestamo]:
+    def obtener_activos_por_estudiante(self, id_estudiante: str) -> List[Prestamo]:
         id_str = str(id_estudiante)
         return [
             p for p in self._datos.values()
@@ -42,7 +41,7 @@ class RepositorioPrestamoLocal(RepositorioPrestamo):
             and (p.estado == EstadoPrestamo.ACTIVO or getattr(p.estado, "value", None) == "Activo")
         ]
 
-    def tiene_multas_pendientes(self, id_estudiante: Union[str, UUID]) -> bool:
+    def tiene_multas_pendientes(self, id_estudiante: str) -> bool:
         id_str = str(id_estudiante)
         for p in self._datos.values():
             p_est_id = str(getattr(p, "estudiante_id", getattr(getattr(p, "estudiante", None), "id", "")))

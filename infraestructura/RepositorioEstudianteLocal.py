@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List
 from aplicacion.puertos.RepositorioEstudiante import RepositorioEstudiante
 
 try:
@@ -25,7 +25,7 @@ class RepositorioEstudianteLocal(RepositorioEstudiante):
         est_id = str(getattr(estudiante, "id", ""))
         self._datos[est_id] = estudiante
 
-    def buscarPorId(self, id: str) -> Optional[Estudiante]:
+    def buscarPorId(self, id: str) -> Estudiante:
         return self._datos.get(str(id))
 
     def obtenerTodos(self) -> List[Estudiante]:
