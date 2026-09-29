@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from decimal import Decimal
 
-
 class Notificador(ABC):
     """
     Puerto (Interfaz) para el servicio de notificaciones.

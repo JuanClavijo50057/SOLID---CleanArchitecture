@@ -1,11 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
-
-try:
-    from dominio.Equipo import Equipo
-except ImportError:
-    from typing import Any as Equipo
-
+from typing import List
+from dominio.Equipo import Equipo
 
 class RepositorioEquipo(ABC):
     """
@@ -14,7 +9,7 @@ class RepositorioEquipo(ABC):
     """
 
     @abstractmethod
-    def buscarPorId(self, id: str) -> Optional[Equipo]:
+    def buscarPorId(self, id: str) -> Equipo:
         """Busca un equipo por su identificador único."""
         pass
 
@@ -32,7 +27,3 @@ class RepositorioEquipo(ABC):
     def eliminar(self, id: str) -> None:
         """Elimina un equipo por su identificador único."""
         pass
-
-    # Aliases compatibles con convenciones PEP8
-    buscar_por_id = buscarPorId
-    obtener_todos = obtenerTodos

@@ -1,11 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
-
-try:
-    from dominio.Notificacion import Notificacion
-except ImportError:
-    from typing import Any as Notificacion
-
+from typing import List
+from dominio.Notificacion import Notificacion
 
 class RepositorioNotificacion(ABC):
     """
@@ -14,7 +9,7 @@ class RepositorioNotificacion(ABC):
     """
 
     @abstractmethod
-    def buscarPorId(self, id: str) -> Optional[Notificacion]:
+    def buscarPorId(self, id: str) -> Notificacion:
         """Busca una notificación por su identificador único."""
         pass
 
@@ -32,7 +27,3 @@ class RepositorioNotificacion(ABC):
     def eliminar(self, id: str) -> None:
         """Elimina una notificación por su identificador único."""
         pass
-
-    # Aliases compatibles con convenciones PEP8
-    buscar_por_id = buscarPorId
-    obtener_todos = obtenerTodos

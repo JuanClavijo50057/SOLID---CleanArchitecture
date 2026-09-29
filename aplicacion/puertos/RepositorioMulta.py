@@ -1,11 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
-
-try:
-    from dominio.Multa import Multa
-except ImportError:
-    from typing import Any as Multa
-
+from typing import List
+from dominio.Multa import Multa
 
 class RepositorioMulta(ABC):
     """
@@ -14,7 +9,7 @@ class RepositorioMulta(ABC):
     """
 
     @abstractmethod
-    def buscarPorId(self, id: str) -> Optional[Multa]:
+    def buscarPorId(self, id: str) -> Multa:
         """Busca una multa por su identificador único."""
         pass
 
@@ -32,7 +27,3 @@ class RepositorioMulta(ABC):
     def eliminar(self, id: str) -> None:
         """Elimina una multa por su identificador único."""
         pass
-
-    # Aliases compatibles con convenciones PEP8
-    buscar_por_id = buscarPorId
-    obtener_todos = obtenerTodos

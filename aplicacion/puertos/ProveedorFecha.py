@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import date
 
-
 class ProveedorFecha(ABC):
     """
     Puerto (Interfaz) para proveer la fecha actual del sistema.
