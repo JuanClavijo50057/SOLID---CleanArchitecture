@@ -1,12 +1,12 @@
 from uuid import UUID
+from decimal import Decimal
 from dominio.Equipo import Equipo
 from dominio.Enums import EstadoEquipo
-from decimal import Decimal
 
-class Portatil(Equipo):
-    # R3 y R5
-    TARIFA_DIARIA = Decimal('5000.00')
-    PLAZO_PRESTAMO = 3
+class Camara(Equipo):
+    # Reglas de negocio para Cámara (R3 y R5)
+    TARIFA_DIARIA = Decimal('8000.00')
+    PLAZO_PRESTAMO = 2
 
     def __init__(self, id_equipo: UUID, estado: EstadoEquipo = EstadoEquipo.DISPONIBLE):
         super().__init__(
