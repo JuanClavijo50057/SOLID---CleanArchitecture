@@ -13,3 +13,7 @@ class EstadoPrestamo(Enum):
 class EstadoMulta(Enum):
     PENDIENTE = "Pendiente"
     PAGADA = "Pagada"
+
+class CondicionDevolucion(Enum):
+    BUEN_ESTADO = "BUEN_ESTADO"
+    DANADO = "DANADO"
