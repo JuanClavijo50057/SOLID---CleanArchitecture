@@ -5,28 +5,8 @@ from decimal import Decimal
 
 from aplicacion.puertos.RepositorioMulta import RepositorioMulta
 from infraestructura.ConexionSQLite import ConexionSQLite
-
-try:
-    from dominio.Multa import Multa
-except ImportError:
-    class Multa:
-        def __init__(self, id=None, tarifa=None, total=None, estado=None):
-            self.id = id
-            self.tarifa = tarifa
-            self.total = total
-            self.estado = estado
-
-        def __repr__(self):
-            return f"<Multa id={self.id} tarifa={self.tarifa} total={self.total} estado={self.estado}>"
-
-try:
-    from dominio.Enums import EstadoMulta
-except ImportError:
-    from enum import Enum
-
-    class EstadoMulta(Enum):
-        PAGADA = "Pagada"
-        PENDIENTE = "Pendiente"
+from dominio.Multa import Multa
+from dominio.Enums import EstadoMulta
 
 
 class RepositorioMultaSQLite(RepositorioMulta):
@@ -45,9 +25,9 @@ class RepositorioMultaSQLite(RepositorioMulta):
 
     def guardar(self, multa: Multa) -> None:
         """Inserta o actualiza una multa en SQLite."""
-        m_id = str(getattr(multa, "id", ""))
-        tarifa = float(getattr(multa, "tarifa", 0.0))
-        total = float(getattr(multa, "total", 0.0))
+        m_id = str(getattr(multa, "id_multa", getattr(multa, "id", "")))
+        tarifa_str = str(Decimal(str(multa.tarifa)))
+        total_str = str(Decimal(str(multa.total)))
         estado = getattr(multa, "estado", EstadoMulta.PENDIENTE)
         estado_val = estado.value if hasattr(estado, "value") else str(estado)
 
@@ -59,13 +39,38 @@ class RepositorioMultaSQLite(RepositorioMulta):
                     INSERT OR REPLACE INTO multas (id, tarifa, total, estado)
                     VALUES (?, ?, ?, ?)
                     """,
-                    (m_id, tarifa, total, estado_val),
+                    (m_id, tarifa_str, total_str, estado_val),
                 )
         finally:
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def buscarPorId(self, id: str) -> Optional[Multa]:
+    def _reconstruir_multa(self, row: sqlite3.Row) -> Multa:
+        try:
+            id_uuid = UUID(str(row["id"]))
+        except Exception:
+            id_uuid = row["id"]
+
+        estado_raw = row["estado"]
+        try:
+            estado = EstadoMulta(estado_raw)
+        except ValueError:
+            try:
+                estado = EstadoMulta[estado_raw]
+            except KeyError:
+                estado = EstadoMulta.PENDIENTE
+
+        tarifa_dec = Decimal(str(row["tarifa"]))
+        total_dec = Decimal(str(row["total"]))
+
+        return Multa(
+            id_multa=id_uuid,
+            tarifa=tarifa_dec,
+            total=total_dec,
+            estado=estado,
+        )
+
+    def buscar_por_id(self, id: Union[str, UUID]) -> Optional[Multa]:
         """Busca una multa por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()
@@ -78,60 +83,32 @@ class RepositorioMultaSQLite(RepositorioMulta):
             row = cursor.fetchone()
             if row is None:
                 return None
-
-            try:
-                id_val = UUID(row["id"])
-            except Exception:
-                id_val = row["id"]
-
-            try:
-                estado = EstadoMulta(row["estado"])
-            except Exception:
-                estado = row["estado"]
-
-            multa = Multa(
-                id=id_val,
-                tarifa=Decimal(str(row["tarifa"])),
-                total=Decimal(str(row["total"])),
-            )
-            multa.estado = estado
-            return multa
+            return self._reconstruir_multa(row)
         finally:
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def obtenerTodos(self) -> List[Multa]:
+    def buscarPorId(self, id: Union[str, UUID]) -> Optional[Multa]:
+        """Alias para cumplir con la interfaz del puerto RepositorioMulta."""
+        return self.buscar_por_id(id)
+
+    def obtener_todos(self) -> List[Multa]:
         """Obtiene todas las multas registradas en SQLite."""
-        multas: List[Multa] = []
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
             cursor.execute("SELECT id, tarifa, total, estado FROM multas")
             rows = cursor.fetchall()
-            for row in rows:
-                try:
-                    id_val = UUID(row["id"])
-                except Exception:
-                    id_val = row["id"]
-
-                try:
-                    estado = EstadoMulta(row["estado"])
-                except Exception:
-                    estado = row["estado"]
-
-                m = Multa(
-                    id=id_val,
-                    tarifa=Decimal(str(row["tarifa"])),
-                    total=Decimal(str(row["total"])),
-                )
-                m.estado = estado
-                multas.append(m)
-            return multas
+            return [self._reconstruir_multa(row) for row in rows]
         finally:
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def eliminar(self, id: str) -> None:
+    def obtenerTodos(self) -> List[Multa]:
+        """Alias para cumplir con la interfaz del puerto RepositorioMulta."""
+        return self.obtener_todos()
+
+    def eliminar(self, id: Union[str, UUID]) -> None:
         """Elimina una multa por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()
@@ -142,5 +119,22 @@ class RepositorioMultaSQLite(RepositorioMulta):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    buscar_por_id = buscarPorId
-    obtener_todos = obtenerTodos
+    def tiene_multas_pendientes(self, id_estudiante: Union[str, UUID]) -> bool:
+        """Retorna True si el estudiante tiene al menos una multa en estado PENDIENTE."""
+        id_str = str(id_estudiante)
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT 1 FROM multas m
+                JOIN prestamos p ON p.multa_id = m.id
+                WHERE p.estudiante_id = ? AND (m.estado = ? OR m.estado = ?)
+                LIMIT 1
+                """,
+                (id_str, EstadoMulta.PENDIENTE.value, "PENDIENTE"),
+            )
+            return cursor.fetchone() is not None
+        finally:
+            if self.conexion_sqlite._memory_conn is None:
+                conn.close()

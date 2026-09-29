@@ -27,3 +27,19 @@ class RepositorioPrestamo(ABC):
     def eliminar(self, id: str) -> None:
         """Elimina un préstamo por su identificador único."""
         pass
+
+    @abstractmethod
+    def obtener_activos_por_estudiante(self, id_estudiante: str) -> List[Prestamo]:
+        """
+        Retorna la lista de préstamos que el estudiante aún no ha devuelto 
+        (EstadoPrestamo.ACTIVO).
+        """
+        pass
+
+    @abstractmethod
+    def tiene_multas_pendientes(self, id_estudiante: str) -> bool:
+        """
+        Retorna True si el estudiante tiene al menos una multa 
+        en EstadoMulta.PENDIENTE.
+        """
+        pass

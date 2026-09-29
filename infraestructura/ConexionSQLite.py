@@ -41,32 +41,30 @@ class ConexionSQLite:
             """
         )
 
-        # Tabla Equipos
+        # Tabla Equipos: Persistencia limpia con solo id, tipo y estado
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS equipos (
                 id TEXT PRIMARY KEY,
                 tipo TEXT NOT NULL,
-                estado TEXT NOT NULL,
-                tarifa_diaria REAL NOT NULL,
-                plazo_prestamo INTEGER NOT NULL
-            );
-            """
-        )
-
-        # Tabla Multas
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS multas (
-                id TEXT PRIMARY KEY,
-                tarifa REAL NOT NULL,
-                total REAL NOT NULL,
                 estado TEXT NOT NULL
             );
             """
         )
 
-        # Tabla Prestamos
+        # Tabla Multas: Tarifas almacenadas como TEXT para precisión decimal exacta
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS multas (
+                id TEXT PRIMARY KEY,
+                tarifa TEXT NOT NULL,
+                total TEXT NOT NULL,
+                estado TEXT NOT NULL
+            );
+            """
+        )
+
+        # Tabla Prestamos: Tarifa pactada como TEXT para precisión decimal exacta
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS prestamos (
@@ -74,7 +72,7 @@ class ConexionSQLite:
                 estudiante_id TEXT NOT NULL,
                 equipo_id TEXT NOT NULL,
                 multa_id TEXT,
-                tarifa_pactada REAL NOT NULL,
+                tarifa_pactada TEXT NOT NULL,
                 fecha_inicial TEXT NOT NULL,
                 fecha_limite TEXT NOT NULL,
                 estado TEXT NOT NULL

@@ -9,18 +9,21 @@ try:
     from dominio.Notificacion import Notificacion
 except ImportError:
     class Notificacion:
-        def __init__(self, id=None, mensaje=None, destinatario=None, fecha=None, tipo=None):
-            self.id = id
-            self.mensaje = mensaje
+        """Clase de dominio Notificacion (fallback si no está disponible en dominio)."""
+        def __init__(
+            self,
+            id_notificacion: Optional[Union[str, UUID]] = None,
+            destinatario: str = "",
+            mensaje: str = "",
+            fecha: str = "",
+            tipo: str = "general",
+            **kwargs,
+        ):
+            self.id = id_notificacion or kwargs.get("id")
             self.destinatario = destinatario
+            self.mensaje = mensaje
             self.fecha = fecha
             self.tipo = tipo
-
-        def __repr__(self):
-            return (
-                f"<Notificacion id={self.id} destinatario={self.destinatario} "
-                f"mensaje={self.mensaje} fecha={self.fecha}>"
-            )
 
 
 class RepositorioNotificacionSQLite(RepositorioNotificacion):
@@ -39,7 +42,7 @@ class RepositorioNotificacionSQLite(RepositorioNotificacion):
 
     def guardar(self, notificacion: Notificacion) -> None:
         """Inserta o actualiza una notificación en SQLite."""
-        notif_id = str(getattr(notificacion, "id", ""))
+        notif_id = str(getattr(notificacion, "id_notificacion", getattr(notificacion, "id", "")))
         tipo = str(getattr(notificacion, "tipo", "general"))
         destinatario = str(getattr(notificacion, "destinatario", ""))
         mensaje = str(getattr(notificacion, "mensaje", ""))
@@ -59,7 +62,30 @@ class RepositorioNotificacionSQLite(RepositorioNotificacion):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def buscarPorId(self, id: str) -> Optional[Notificacion]:
+    def _reconstruir_notificacion(self, row: sqlite3.Row) -> Notificacion:
+        try:
+            id_val = UUID(str(row["id"]))
+        except Exception:
+            id_val = row["id"]
+
+        try:
+            return Notificacion(
+                id_notificacion=id_val,
+                mensaje=row["mensaje"],
+                destinatario=row["destinatario"],
+                fecha=row["fecha"],
+                tipo=row["tipo"],
+            )
+        except TypeError:
+            return Notificacion(
+                id=id_val,
+                mensaje=row["mensaje"],
+                destinatario=row["destinatario"],
+                fecha=row["fecha"],
+                tipo=row["tipo"],
+            )
+
+    def buscar_por_id(self, id: Union[str, UUID]) -> Optional[Notificacion]:
         """Busca una notificación por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()
@@ -72,54 +98,32 @@ class RepositorioNotificacionSQLite(RepositorioNotificacion):
             row = cursor.fetchone()
             if row is None:
                 return None
+            return self._reconstruir_notificacion(row)
+        finally:
+            if self.conexion_sqlite._memory_conn is None:
+                conn.close()
 
-            try:
-                id_val = UUID(row["id"])
-            except Exception:
-                id_val = row["id"]
+    def buscarPorId(self, id: Union[str, UUID]) -> Optional[Notificacion]:
+        """Alias para cumplir con la interfaz del puerto RepositorioNotificacion."""
+        return self.buscar_por_id(id)
 
-            return Notificacion(
-                id=id_val,
-                mensaje=row["mensaje"],
-                destinatario=row["destinatario"],
-                fecha=row["fecha"],
-                tipo=row["tipo"],
-            )
+    def obtener_todos(self) -> List[Notificacion]:
+        """Obtiene todas las notificaciones registradas en SQLite."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, tipo, destinatario, mensaje, fecha FROM notificaciones")
+            rows = cursor.fetchall()
+            return [self._reconstruir_notificacion(row) for row in rows]
         finally:
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
     def obtenerTodos(self) -> List[Notificacion]:
-        """Obtiene todas las notificaciones registradas en SQLite."""
-        notificaciones: List[Notificacion] = []
-        conn = self._get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT id, tipo, destinatario, mensaje, fecha FROM notificaciones"
-            )
-            rows = cursor.fetchall()
-            for row in rows:
-                try:
-                    id_val = UUID(row["id"])
-                except Exception:
-                    id_val = row["id"]
+        """Alias para cumplir con la interfaz del puerto RepositorioNotificacion."""
+        return self.obtener_todos()
 
-                notificaciones.append(
-                    Notificacion(
-                        id=id_val,
-                        mensaje=row["mensaje"],
-                        destinatario=row["destinatario"],
-                        fecha=row["fecha"],
-                        tipo=row["tipo"],
-                    )
-                )
-            return notificaciones
-        finally:
-            if self.conexion_sqlite._memory_conn is None:
-                conn.close()
-
-    def eliminar(self, id: str) -> None:
+    def eliminar(self, id: Union[str, UUID]) -> None:
         """Elimina una notificación por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()
@@ -129,6 +133,3 @@ class RepositorioNotificacionSQLite(RepositorioNotificacion):
         finally:
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
-
-    buscar_por_id = buscarPorId
-    obtener_todos = obtenerTodos

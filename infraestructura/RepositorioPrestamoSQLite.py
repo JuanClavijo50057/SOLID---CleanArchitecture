@@ -9,7 +9,7 @@ from aplicacion.puertos.RepositorioEquipo import RepositorioEquipo
 from infraestructura.ConexionSQLite import ConexionSQLite
 from infraestructura.RepositorioEquipoSQLite import RepositorioEquipoSQLite
 from dominio.Prestamo import Prestamo
-from dominio.Enums import EstadoPrestamo
+from dominio.Enums import EstadoPrestamo, EstadoMulta
 
 
 class RepositorioPrestamoSQLite(RepositorioPrestamo):
@@ -42,8 +42,8 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
             getattr(
                 prestamo,
                 "estudiante_id",
-                getattr(estudiante, "id", ""),
-            )
+                getattr(estudiante, "id", getattr(estudiante, "id_estudiante", "")),
+            ) or ""
         )
 
         # Obtener equipo_id
@@ -53,17 +53,20 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
             eq_id = getattr(equipo, "id_equipo", getattr(equipo, "id", ""))
         equipo_id = str(eq_id or "")
 
-        # Si el equipo está disponible en memoria pero no en DB, guardarlo
+        # Persistir equipo si es necesario
         if equipo and self.repo_equipo:
-            if not self.repo_equipo.buscarPorId(equipo_id):
+            equipo_existente = self.repo_equipo.buscar_por_id(equipo_id)
+            if equipo_existente is None:
                 self.repo_equipo.guardar(equipo)
 
         # Multa id opcional
         multa = getattr(prestamo, "multa", None)
-        multa_id = getattr(prestamo, "multa_id", getattr(multa, "id", None))
+        multa_id = getattr(prestamo, "multa_id", getattr(multa, "id", getattr(multa, "id_multa", None)))
         multa_id_str = str(multa_id) if multa_id else None
 
-        tarifa_pactada = float(prestamo.tarifa_pactada)
+        # Precisión financiera: guardar como string del Decimal sin usar float
+        tarifa_pactada_str = str(Decimal(str(prestamo.tarifa_pactada)))
+
         fecha_inicial = (
             prestamo.fecha_inicial.isoformat()
             if isinstance(prestamo.fecha_inicial, date)
@@ -96,7 +99,7 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
                         estudiante_id,
                         equipo_id,
                         multa_id_str,
-                        tarifa_pactada,
+                        tarifa_pactada_str,
                         fecha_inicial,
                         fecha_limite,
                         estado_val,
@@ -106,7 +109,52 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def buscarPorId(self, id: str) -> Optional[Prestamo]:
+    def _reconstruir_prestamo(self, row: sqlite3.Row) -> Prestamo:
+        try:
+            id_uuid = UUID(str(row["id"]))
+        except Exception:
+            id_uuid = row["id"]
+
+        equipo_id = row["equipo_id"]
+        equipo = self.repo_equipo.buscar_por_id(equipo_id)
+        if equipo is None:
+            from dominio.Portatil import Portatil
+
+            try:
+                eq_uuid = UUID(str(equipo_id))
+            except Exception:
+                eq_uuid = equipo_id
+            equipo = Portatil(id_equipo=eq_uuid)
+
+        fecha_ini = date.fromisoformat(row["fecha_inicial"])
+        fecha_lim = date.fromisoformat(row["fecha_limite"])
+
+        estado_raw = row["estado"]
+        try:
+            estado = EstadoPrestamo(estado_raw)
+        except ValueError:
+            try:
+                estado = EstadoPrestamo[estado_raw]
+            except KeyError:
+                estado = EstadoPrestamo.ACTIVO
+
+        prestamo = Prestamo(
+            id_prestamo=id_uuid,
+            equipo=equipo,
+            fecha_inicial=fecha_ini,
+            fecha_limite=fecha_lim,
+            estado=estado,
+        )
+        prestamo.fecha_limite = fecha_lim
+        # Precisión financiera: casteo explícito a Decimal instanciándolo desde string
+        prestamo.tarifa_pactada = Decimal(str(row["tarifa_pactada"]))
+        prestamo.estudiante_id = row["estudiante_id"]
+        prestamo.equipo_id = row["equipo_id"]
+        if "multa_id" in row.keys() and row["multa_id"]:
+            prestamo.multa_id = row["multa_id"]
+        return prestamo
+
+    def buscar_por_id(self, id: Union[str, UUID]) -> Optional[Prestamo]:
         """Busca un préstamo por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()
@@ -129,9 +177,12 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def obtenerTodos(self) -> List[Prestamo]:
+    def buscarPorId(self, id: Union[str, UUID]) -> Optional[Prestamo]:
+        """Alias para cumplir con la interfaz del puerto RepositorioPrestamo."""
+        return self.buscar_por_id(id)
+
+    def obtener_todos(self) -> List[Prestamo]:
         """Obtiene todos los préstamos registrados en SQLite."""
-        prestamos: List[Prestamo] = []
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
@@ -143,54 +194,16 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
                 """
             )
             rows = cursor.fetchall()
-            for row in rows:
-                prestamos.append(self._reconstruir_prestamo(row))
-            return prestamos
+            return [self._reconstruir_prestamo(row) for row in rows]
         finally:
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def _reconstruir_prestamo(self, row: sqlite3.Row) -> Prestamo:
-        try:
-            id_uuid = UUID(row["id"])
-        except Exception:
-            id_uuid = row["id"]
+    def obtenerTodos(self) -> List[Prestamo]:
+        """Alias para cumplir con la interfaz del puerto RepositorioPrestamo."""
+        return self.obtener_todos()
 
-        equipo_id = row["equipo_id"]
-        equipo = self.repo_equipo.buscarPorId(equipo_id)
-        if equipo is None:
-            from dominio.Portatil import Portatil
-
-            try:
-                eq_uuid = UUID(equipo_id)
-            except Exception:
-                eq_uuid = equipo_id
-            equipo = Portatil(id_equipo=eq_uuid)
-            equipo.tarifa_diaria = Decimal(str(row["tarifa_pactada"]))
-
-        fecha_ini = date.fromisoformat(row["fecha_inicial"])
-        fecha_lim = date.fromisoformat(row["fecha_limite"])
-
-        try:
-            estado = EstadoPrestamo(row["estado"])
-        except ValueError:
-            estado = EstadoPrestamo.ACTIVO
-
-        prestamo = Prestamo(
-            id_prestamo=id_uuid,
-            equipo=equipo,
-            fecha_inicial=fecha_ini,
-            fecha_limite=fecha_lim,
-            estado=estado,
-        )
-        prestamo.fecha_limite = fecha_lim
-        prestamo.tarifa_pactada = Decimal(str(row["tarifa_pactada"]))
-        prestamo.estudiante_id = row["estudiante_id"]
-        prestamo.equipo_id = row["equipo_id"]
-        prestamo.multa_id = row["multa_id"]
-        return prestamo
-
-    def eliminar(self, id: str) -> None:
+    def eliminar(self, id: Union[str, UUID]) -> None:
         """Elimina un préstamo por ID en SQLite."""
         id_str = str(id)
         conn = self._get_connection()
@@ -201,5 +214,43 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    buscar_por_id = buscarPorId
-    obtener_todos = obtenerTodos
+    def obtener_activos_por_estudiante(self, id_estudiante: Union[str, UUID]) -> List[Prestamo]:
+        """Retorna la lista de préstamos activos de un estudiante."""
+        id_str = str(id_estudiante)
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT id, estudiante_id, equipo_id, multa_id,
+                       tarifa_pactada, fecha_inicial, fecha_limite, estado
+                FROM prestamos
+                WHERE estudiante_id = ? AND (estado = ? OR estado = ?)
+                """,
+                (id_str, EstadoPrestamo.ACTIVO.value, "ACTIVO"),
+            )
+            rows = cursor.fetchall()
+            return [self._reconstruir_prestamo(row) for row in rows]
+        finally:
+            if self.conexion_sqlite._memory_conn is None:
+                conn.close()
+
+    def tiene_multas_pendientes(self, id_estudiante: Union[str, UUID]) -> bool:
+        """Retorna True si el estudiante tiene al menos una multa pendiente."""
+        id_str = str(id_estudiante)
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT 1 FROM prestamos p
+                JOIN multas m ON p.multa_id = m.id
+                WHERE p.estudiante_id = ? AND (m.estado = ? OR m.estado = ?)
+                LIMIT 1
+                """,
+                (id_str, EstadoMulta.PENDIENTE.value, "PENDIENTE"),
+            )
+            return cursor.fetchone() is not None
+        finally:
+            if self.conexion_sqlite._memory_conn is None:
+                conn.close()
