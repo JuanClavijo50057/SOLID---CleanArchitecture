@@ -57,6 +57,7 @@ class ConexionSQLite:
             """
             CREATE TABLE IF NOT EXISTS multas (
                 id TEXT PRIMARY KEY,
+                estudiante_id TEXT NOT NULL,
                 tarifa TEXT NOT NULL,
                 total TEXT NOT NULL,
                 estado TEXT NOT NULL

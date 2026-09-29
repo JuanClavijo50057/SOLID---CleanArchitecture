@@ -15,11 +15,15 @@ class RepositorioEquipoLocal(RepositorioEquipo):
         eq_id = str(getattr(equipo, "id_equipo", getattr(equipo, "id", "")))
         self._datos[eq_id] = equipo
 
-    def buscarPorId(self, id: str) -> Equipo:
+    def buscar_por_id(self, id: str) -> Equipo:
         return self._datos.get(str(id))
 
-    def obtenerTodos(self) -> List[Equipo]:
+    buscarPorId = buscar_por_id
+
+    def obtener_todos(self) -> List[Equipo]:
         return list(self._datos.values())
+
+    obtenerTodos = obtener_todos
 
     def eliminar(self, id: str) -> None:
         id_str = str(id)

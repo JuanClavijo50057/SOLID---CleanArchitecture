@@ -1,4 +1,3 @@
-from uuid import UUID
 from decimal import Decimal
 from dominio.Equipo import Equipo
 from dominio.Enums import EstadoEquipo
@@ -8,7 +7,7 @@ class KitRobotica(Equipo):
     TARIFA_DIARIA = Decimal('12000.00')
     PLAZO_PRESTAMO = 1
 
-    def __init__(self, id_equipo: UUID, estado: EstadoEquipo = EstadoEquipo.DISPONIBLE):
+    def __init__(self, id_equipo: str, estado: EstadoEquipo = EstadoEquipo.DISPONIBLE):
         super().__init__(
             id_equipo=id_equipo,
             tarifa_diaria=self.TARIFA_DIARIA,

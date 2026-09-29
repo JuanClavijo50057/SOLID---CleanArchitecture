@@ -1,4 +1,3 @@
-from uuid import UUID
 from dominio.Prestamo import Prestamo
 from dominio.Enums import EstadoEquipo
 from dominio.Excepciones import (
@@ -21,7 +20,7 @@ class RegistrarPrestamo:
         self.fecha = fecha
         self.notificador = notificador
 
-    def ejecutar(self, id_prestamo: UUID, id_estudiante: UUID, id_equipo: UUID) -> Prestamo:
+    def ejecutar(self, id_prestamo: str, id_estudiante: str, id_equipo: str) -> Prestamo:
         estudiante = self._validar_reglas_estudiante(id_estudiante)
         equipo = self._obtener_equipo_disponible(id_equipo)         
         
@@ -32,8 +31,8 @@ class RegistrarPrestamo:
         self._notificar_exito(prestamo)
         return prestamo
     
-    def _validar_reglas_estudiante(self, id_est: UUID):
-        estudiante = self.repo_est.buscar_por_id(id_est)
+    def _validar_reglas_estudiante(self, id_est: str):
+        estudiante = self.repo_estud.buscar_por_id(id_est)
         if not estudiante:
             raise EntidadNoEncontradaError("Estudiante no existe.")
             
@@ -45,7 +44,7 @@ class RegistrarPrestamo:
             
         return estudiante
 
-    def _obtener_equipo_disponible(self, id_equipo: UUID):
+    def _obtener_equipo_disponible(self, id_equipo: str):
         equipo = self.repo_eq.buscar_por_id(id_equipo)
         if not equipo or equipo.estado != EstadoEquipo.DISPONIBLE:
             raise EquipoNoDisponibleError("R2: El equipo no está DISPONIBLE.")
@@ -56,5 +55,9 @@ class RegistrarPrestamo:
         self.repo_prest.guardar(prestamo)
 
     def _notificar_exito(self, prestamo):
-        msj = f"Préstamo aprobado. R7: Fecha límite de entrega: {prestamo.fecha_limite}"
-        self.notificador.enviar(prestamo.estudiante.correo, msj)
+        self.notificador.notificar_prestamo(
+            prestamo.estudiante.nombre,
+            prestamo.equipo.__class__.__name__,
+            str(prestamo.fecha_limite),
+            prestamo.estudiante.correo,
+        )

@@ -5,10 +5,12 @@ from decimal import Decimal
 
 from aplicacion.puertos.RepositorioPrestamo import RepositorioPrestamo
 from aplicacion.puertos.RepositorioEquipo import RepositorioEquipo
+from aplicacion.puertos.RepositorioEstudiante import RepositorioEstudiante
 from infraestructura.ConexionSQLite import ConexionSQLite
 from infraestructura.RepositorioEquipoSQLite import RepositorioEquipoSQLite
 from dominio.Prestamo import Prestamo
-from dominio.Enums import EstadoPrestamo, EstadoMulta
+from dominio.Enums import EstadoPrestamo
+from dominio.Estudiante import Estudiante
 
 
 class RepositorioPrestamoSQLite(RepositorioPrestamo):
@@ -20,6 +22,7 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
         self,
         conexion_o_path: Union[str, ConexionSQLite] = "sistema_prestamos.db",
         repo_equipo: RepositorioEquipo = None,
+        repo_estudiante: RepositorioEstudiante = None,
     ):
         if isinstance(conexion_o_path, ConexionSQLite):
             self.conexion_sqlite = conexion_o_path
@@ -27,6 +30,7 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
             self.conexion_sqlite = ConexionSQLite(conexion_o_path)
 
         self.repo_equipo = repo_equipo or RepositorioEquipoSQLite(self.conexion_sqlite)
+        self.repo_estudiante = repo_estudiante
 
     def _get_connection(self) -> sqlite3.Connection:
         return self.conexion_sqlite.obtener_conexion()
@@ -128,9 +132,15 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
             except KeyError:
                 estado = EstadoPrestamo.ACTIVO
 
+        estudiante = (
+            self.repo_estudiante.buscar_por_id(row["estudiante_id"])
+            if self.repo_estudiante
+            else Estudiante(row["estudiante_id"], "", "", "")
+        )
         prestamo = Prestamo(
             id_prestamo=str(row["id"]),
             equipo=equipo,
+            estudiante=estudiante,
             fecha_inicial=fecha_ini,
             fecha_limite=fecha_lim,
             estado=estado,
@@ -225,22 +235,3 @@ class RepositorioPrestamoSQLite(RepositorioPrestamo):
             if self.conexion_sqlite._memory_conn is None:
                 conn.close()
 
-    def tiene_multas_pendientes(self, id_estudiante: str) -> bool:
-        """Retorna True si el estudiante tiene al menos una multa pendiente."""
-        id_str = str(id_estudiante)
-        conn = self._get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT 1 FROM prestamos p
-                JOIN multas m ON p.multa_id = m.id
-                WHERE p.estudiante_id = ? AND (m.estado = ? OR m.estado = ?)
-                LIMIT 1
-                """,
-                (id_str, EstadoMulta.PENDIENTE.value, "PENDIENTE"),
-            )
-            return cursor.fetchone() is not None
-        finally:
-            if self.conexion_sqlite._memory_conn is None:
-                conn.close()

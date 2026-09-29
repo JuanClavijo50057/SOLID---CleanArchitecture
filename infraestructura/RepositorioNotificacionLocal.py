@@ -25,11 +25,15 @@ class RepositorioNotificacionLocal(RepositorioNotificacion):
         notif_id = str(getattr(notificacion, "id", ""))
         self._datos[notif_id] = notificacion
 
-    def buscarPorId(self, id: str) -> Notificacion:
+    def buscar_por_id(self, id: str) -> Notificacion:
         return self._datos.get(str(id))
 
-    def obtenerTodos(self) -> List[Notificacion]:
+    buscarPorId = buscar_por_id
+
+    def obtener_todos(self) -> List[Notificacion]:
         return list(self._datos.values())
+
+    obtenerTodos = obtener_todos
 
     def eliminar(self, id: str) -> None:
         id_str = str(id)

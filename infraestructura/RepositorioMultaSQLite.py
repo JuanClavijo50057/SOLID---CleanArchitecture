@@ -35,10 +35,12 @@ class RepositorioMultaSQLite(RepositorioMulta):
             with conn:
                 conn.execute(
                     """
-                    INSERT OR REPLACE INTO multas (id, tarifa, total, estado)
-                    VALUES (?, ?, ?, ?)
+                    INSERT OR REPLACE INTO multas (
+                        id, estudiante_id, tarifa, total, estado
+                    )
+                    VALUES (?, ?, ?, ?, ?)
                     """,
-                    (m_id, tarifa_str, total_str, estado_val),
+                    (m_id, str(getattr(multa, "estudiante_id", "")), tarifa_str, total_str, estado_val),
                 )
         finally:
             if self.conexion_sqlite._memory_conn is None:
@@ -62,6 +64,7 @@ class RepositorioMultaSQLite(RepositorioMulta):
             tarifa=tarifa_dec,
             total=total_dec,
             estado=estado,
+            estudiante_id=str(row["estudiante_id"]),
         )
 
     def buscar_por_id(self, id: str) -> Multa:
@@ -71,7 +74,7 @@ class RepositorioMultaSQLite(RepositorioMulta):
         try:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT id, tarifa, total, estado FROM multas WHERE id = ?",
+                "SELECT id, estudiante_id, tarifa, total, estado FROM multas WHERE id = ?",
                 (id_str,),
             )
             row = cursor.fetchone()
@@ -91,7 +94,7 @@ class RepositorioMultaSQLite(RepositorioMulta):
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, tarifa, total, estado FROM multas")
+            cursor.execute("SELECT id, estudiante_id, tarifa, total, estado FROM multas")
             rows = cursor.fetchall()
             return [self._reconstruir_multa(row) for row in rows]
         finally:
@@ -122,8 +125,7 @@ class RepositorioMultaSQLite(RepositorioMulta):
             cursor.execute(
                 """
                 SELECT 1 FROM multas m
-                JOIN prestamos p ON p.multa_id = m.id
-                WHERE p.estudiante_id = ? AND (m.estado = ? OR m.estado = ?)
+                WHERE m.estudiante_id = ? AND (m.estado = ? OR m.estado = ?)
                 LIMIT 1
                 """,
                 (id_str, EstadoMulta.PENDIENTE.value, "PENDIENTE"),

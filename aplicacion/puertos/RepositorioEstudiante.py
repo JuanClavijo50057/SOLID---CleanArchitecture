@@ -9,12 +9,12 @@ class RepositorioEstudiante(ABC):
     """
 
     @abstractmethod
-    def buscarPorId(self, id: str) -> Estudiante:
+    def buscar_por_id(self, id: str) -> Estudiante:
         """Busca un estudiante por su identificador único."""
         pass
 
     @abstractmethod
-    def obtenerTodos(self) -> List[Estudiante]:
+    def obtener_todos(self) -> List[Estudiante]:
         """Retorna todos los estudiantes registrados."""
         pass
 
@@ -27,3 +27,9 @@ class RepositorioEstudiante(ABC):
     def eliminar(self, id: str) -> None:
         """Elimina un estudiante por su identificador único."""
         pass
+
+    def buscarPorId(self, id: str) -> Estudiante:
+        return self.buscar_por_id(id)
+
+    def obtenerTodos(self) -> List[Estudiante]:
+        return self.obtener_todos()

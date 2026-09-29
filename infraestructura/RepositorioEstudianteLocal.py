@@ -25,11 +25,15 @@ class RepositorioEstudianteLocal(RepositorioEstudiante):
         est_id = str(getattr(estudiante, "id", ""))
         self._datos[est_id] = estudiante
 
-    def buscarPorId(self, id: str) -> Estudiante:
+    def buscar_por_id(self, id: str) -> Estudiante:
         return self._datos.get(str(id))
 
-    def obtenerTodos(self) -> List[Estudiante]:
+    buscarPorId = buscar_por_id
+
+    def obtener_todos(self) -> List[Estudiante]:
         return list(self._datos.values())
+
+    obtenerTodos = obtener_todos
 
     def eliminar(self, id: str) -> None:
         id_str = str(id)

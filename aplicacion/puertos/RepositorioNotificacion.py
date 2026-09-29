@@ -9,12 +9,12 @@ class RepositorioNotificacion(ABC):
     """
 
     @abstractmethod
-    def buscarPorId(self, id: str) -> Notificacion:
+    def buscar_por_id(self, id: str) -> Notificacion:
         """Busca una notificación por su identificador único."""
         pass
 
     @abstractmethod
-    def obtenerTodos(self) -> List[Notificacion]:
+    def obtener_todos(self) -> List[Notificacion]:
         """Retorna todas las notificaciones registradas."""
         pass
 
@@ -27,3 +27,9 @@ class RepositorioNotificacion(ABC):
     def eliminar(self, id: str) -> None:
         """Elimina una notificación por su identificador único."""
         pass
+
+    def buscarPorId(self, id: str) -> Notificacion:
+        return self.buscar_por_id(id)
+
+    def obtenerTodos(self) -> List[Notificacion]:
+        return self.obtener_todos()

@@ -1,5 +1,5 @@
 import sqlite3
-from typing import List, Union
+from typing import Callable, Dict, List, Union
 
 from aplicacion.puertos.RepositorioEquipo import RepositorioEquipo
 from infraestructura.ConexionSQLite import ConexionSQLite
@@ -15,25 +15,29 @@ class RepositorioEquipoSQLite(RepositorioEquipo):
     Implementación del puerto RepositorioEquipo usando SQLite3.
     """
 
-    def __init__(self, conexion_o_path: Union[str, ConexionSQLite] = "sistema_prestamos.db"):
+    def __init__(
+        self,
+        conexion_o_path: Union[str, ConexionSQLite] = "sistema_prestamos.db",
+        creadores: Dict[str, Callable] = None,
+    ):
         if isinstance(conexion_o_path, ConexionSQLite):
             self.conexion_sqlite = conexion_o_path
         else:
             self.conexion_sqlite = ConexionSQLite(conexion_o_path)
+        self.creadores = creadores or {
+            "Portatil": Portatil,
+            "Camara": Camara,
+            "KitRobotica": KitRobotica,
+        }
 
     def _get_connection(self) -> sqlite3.Connection:
         return self.conexion_sqlite.obtener_conexion()
 
     def _crear_instancia(self, tipo: str, id_equipo: str, estado: EstadoEquipo) -> Equipo:
-        tipo_normalizado = tipo.strip().lower().replace(" ", "").replace("_", "")
-        if "portatil" in tipo_normalizado or "laptop" in tipo_normalizado:
-            return Portatil(id_equipo=id_equipo, estado=estado)
-        elif "camara" in tipo_normalizado or "camera" in tipo_normalizado:
-            return Camara(id_equipo=id_equipo, estado=estado)
-        elif "kit" in tipo_normalizado or "robotica" in tipo_normalizado:
-            return KitRobotica(id_equipo=id_equipo, estado=estado)
-        else:
+        creador = self.creadores.get(tipo)
+        if creador is None:
             raise ValueError(f"Tipo de equipo desconocido: {tipo}")
+        return creador(id_equipo=id_equipo, estado=estado)
 
     def guardar(self, equipo: Equipo) -> None:
         """Inserta o actualiza un equipo en SQLite."""

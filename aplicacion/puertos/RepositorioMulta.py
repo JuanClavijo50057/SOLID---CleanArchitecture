@@ -9,12 +9,12 @@ class RepositorioMulta(ABC):
     """
 
     @abstractmethod
-    def buscarPorId(self, id: str) -> Multa:
+    def buscar_por_id(self, id: str) -> Multa:
         """Busca una multa por su identificador único."""
         pass
 
     @abstractmethod
-    def obtenerTodos(self) -> List[Multa]:
+    def obtener_todos(self) -> List[Multa]:
         """Retorna todas las multas registradas."""
         pass
 
@@ -27,3 +27,14 @@ class RepositorioMulta(ABC):
     def eliminar(self, id: str) -> None:
         """Elimina una multa por su identificador único."""
         pass
+
+    @abstractmethod
+    def tiene_multas_pendientes(self, id_estudiante: str) -> bool:
+        """Indica si el estudiante tiene una multa pendiente."""
+        pass
+
+    def buscarPorId(self, id: str) -> Multa:
+        return self.buscar_por_id(id)
+
+    def obtenerTodos(self) -> List[Multa]:
+        return self.obtener_todos()

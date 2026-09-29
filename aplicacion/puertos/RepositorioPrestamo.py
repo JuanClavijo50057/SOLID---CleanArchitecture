@@ -9,12 +9,12 @@ class RepositorioPrestamo(ABC):
     """
 
     @abstractmethod
-    def buscarPorId(self, id: str) -> Prestamo:
+    def buscar_por_id(self, id: str) -> Prestamo:
         """Busca un préstamo por su identificador único."""
         pass
 
     @abstractmethod
-    def obtenerTodos(self) -> List[Prestamo]:
+    def obtener_todos(self) -> List[Prestamo]:
         """Retorna todos los préstamos registrados."""
         pass
 
@@ -36,10 +36,8 @@ class RepositorioPrestamo(ABC):
         """
         pass
 
-    @abstractmethod
-    def tiene_multas_pendientes(self, id_estudiante: str) -> bool:
-        """
-        Retorna True si el estudiante tiene al menos una multa 
-        en EstadoMulta.PENDIENTE.
-        """
-        pass
+    def buscarPorId(self, id: str) -> Prestamo:
+        return self.buscar_por_id(id)
+
+    def obtenerTodos(self) -> List[Prestamo]:
+        return self.obtener_todos()

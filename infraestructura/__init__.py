@@ -11,6 +11,7 @@ from infraestructura.RepositorioPrestamoLocal import RepositorioPrestamoLocal
 from infraestructura.RepositorioNotificacionLocal import RepositorioNotificacionLocal
 from infraestructura.NotificadorGmail import NotificadorGmail
 from infraestructura.ProveedorFechaReal import ProveedorFechaReal
+from infraestructura.ProveedorFechaFija import ProveedorFechaFija
 
 __all__ = [
     "ConexionSQLite",
@@ -26,4 +27,5 @@ __all__ = [
     "RepositorioNotificacionLocal",
     "NotificadorGmail",
     "ProveedorFechaReal",
+    "ProveedorFechaFija",
 ]

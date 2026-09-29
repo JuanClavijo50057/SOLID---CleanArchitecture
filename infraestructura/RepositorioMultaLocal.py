@@ -19,8 +19,7 @@ class RepositorioMultaLocal(RepositorioMulta):
     def buscar_por_id(self, id: str) -> Multa:
         return self._datos.get(str(id))
 
-    def buscarPorId(self, id: str) -> Multa:
-        return self.buscar_por_id(id)
+    buscarPorId = buscar_por_id
 
     def obtener_todos(self) -> List[Multa]:
         return list(self._datos.values())
@@ -34,5 +33,10 @@ class RepositorioMultaLocal(RepositorioMulta):
             del self._datos[id_str]
 
     def tiene_multas_pendientes(self, id_estudiante: str) -> bool:
-        # Método auxiliar para casos de uso
+        for multa in self._datos.values():
+            if (
+                str(getattr(multa, "estudiante_id", "")) == str(id_estudiante)
+                and multa.estado == EstadoMulta.PENDIENTE
+            ):
+                return True
         return False
