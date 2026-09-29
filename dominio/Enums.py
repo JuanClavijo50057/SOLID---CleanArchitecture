@@ -9,3 +9,7 @@ class EstadoEquipo(Enum):
 class EstadoPrestamo(Enum):
     ACTIVO = "Activo"
     FINALIZADO = "Finalizado"
+
+class EstadoMulta(Enum):
+    PENDIENTE = "Pendiente"
+    PAGADA = "Pagada"

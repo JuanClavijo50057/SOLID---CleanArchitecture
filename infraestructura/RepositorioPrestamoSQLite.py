@@ -1,0 +1,205 @@
+import sqlite3
+from typing import List, Optional, Union
+from uuid import UUID
+from datetime import date
+from decimal import Decimal
+
+from aplicacion.puertos.RepositorioPrestamo import RepositorioPrestamo
+from aplicacion.puertos.RepositorioEquipo import RepositorioEquipo
+from infraestructura.ConexionSQLite import ConexionSQLite
+from infraestructura.RepositorioEquipoSQLite import RepositorioEquipoSQLite
+from dominio.Prestamo import Prestamo
+from dominio.Enums import EstadoPrestamo
+
+
+class RepositorioPrestamoSQLite(RepositorioPrestamo):
+    """
+    Implementación del puerto RepositorioPrestamo usando SQLite3.
+    """
+
+    def __init__(
+        self,
+        conexion_o_path: Union[str, ConexionSQLite] = "sistema_prestamos.db",
+        repo_equipo: Optional[RepositorioEquipo] = None,
+    ):
+        if isinstance(conexion_o_path, ConexionSQLite):
+            self.conexion_sqlite = conexion_o_path
+        else:
+            self.conexion_sqlite = ConexionSQLite(conexion_o_path)
+
+        self.repo_equipo = repo_equipo or RepositorioEquipoSQLite(self.conexion_sqlite)
+
+    def _get_connection(self) -> sqlite3.Connection:
+        return self.conexion_sqlite.obtener_conexion()
+
+    def guardar(self, prestamo: Prestamo) -> None:
+        """Inserta o actualiza un préstamo en SQLite."""
+        p_id = str(prestamo.id)
+
+        # Obtener estudiante_id
+        estudiante = getattr(prestamo, "estudiante", None)
+        estudiante_id = str(
+            getattr(
+                prestamo,
+                "estudiante_id",
+                getattr(estudiante, "id", ""),
+            )
+        )
+
+        # Obtener equipo_id
+        equipo = getattr(prestamo, "equipo", None)
+        eq_id = getattr(prestamo, "equipo_id", None)
+        if not eq_id and equipo:
+            eq_id = getattr(equipo, "id_equipo", getattr(equipo, "id", ""))
+        equipo_id = str(eq_id or "")
+
+        # Si el equipo está disponible en memoria pero no en DB, guardarlo
+        if equipo and self.repo_equipo:
+            if not self.repo_equipo.buscarPorId(equipo_id):
+                self.repo_equipo.guardar(equipo)
+
+        # Multa id opcional
+        multa = getattr(prestamo, "multa", None)
+        multa_id = getattr(prestamo, "multa_id", getattr(multa, "id", None))
+        multa_id_str = str(multa_id) if multa_id else None
+
+        tarifa_pactada = float(prestamo.tarifa_pactada)
+        fecha_inicial = (
+            prestamo.fecha_inicial.isoformat()
+            if isinstance(prestamo.fecha_inicial, date)
+            else str(prestamo.fecha_inicial)
+        )
+        fecha_limite = (
+            prestamo.fecha_limite.isoformat()
+            if isinstance(prestamo.fecha_limite, date)
+            else str(prestamo.fecha_limite)
+        )
+        estado_val = (
+            prestamo.estado.value
+            if hasattr(prestamo.estado, "value")
+            else str(prestamo.estado)
+        )
+
+        conn = self._get_connection()
+        try:
+            with conn:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO prestamos (
+                        id, estudiante_id, equipo_id, multa_id,
+                        tarifa_pactada, fecha_inicial, fecha_limite, estado
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        p_id,
+                        estudiante_id,
+                        equipo_id,
+                        multa_id_str,
+                        tarifa_pactada,
+                        fecha_inicial,
+                        fecha_limite,
+                        estado_val,
+                    ),
+                )
+        finally:
+            if self.conexion_sqlite._memory_conn is None:
+                conn.close()
+
+    def buscarPorId(self, id: str) -> Optional[Prestamo]:
+        """Busca un préstamo por ID en SQLite."""
+        id_str = str(id)
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT id, estudiante_id, equipo_id, multa_id,
+                       tarifa_pactada, fecha_inicial, fecha_limite, estado
+                FROM prestamos
+                WHERE id = ?
+                """,
+                (id_str,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                return None
+            return self._reconstruir_prestamo(row)
+        finally:
+            if self.conexion_sqlite._memory_conn is None:
+                conn.close()
+
+    def obtenerTodos(self) -> List[Prestamo]:
+        """Obtiene todos los préstamos registrados en SQLite."""
+        prestamos: List[Prestamo] = []
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT id, estudiante_id, equipo_id, multa_id,
+                       tarifa_pactada, fecha_inicial, fecha_limite, estado
+                FROM prestamos
+                """
+            )
+            rows = cursor.fetchall()
+            for row in rows:
+                prestamos.append(self._reconstruir_prestamo(row))
+            return prestamos
+        finally:
+            if self.conexion_sqlite._memory_conn is None:
+                conn.close()
+
+    def _reconstruir_prestamo(self, row: sqlite3.Row) -> Prestamo:
+        try:
+            id_uuid = UUID(row["id"])
+        except Exception:
+            id_uuid = row["id"]
+
+        equipo_id = row["equipo_id"]
+        equipo = self.repo_equipo.buscarPorId(equipo_id)
+        if equipo is None:
+            from dominio.Portatil import Portatil
+
+            try:
+                eq_uuid = UUID(equipo_id)
+            except Exception:
+                eq_uuid = equipo_id
+            equipo = Portatil(id_equipo=eq_uuid)
+            equipo.tarifa_diaria = Decimal(str(row["tarifa_pactada"]))
+
+        fecha_ini = date.fromisoformat(row["fecha_inicial"])
+        fecha_lim = date.fromisoformat(row["fecha_limite"])
+
+        try:
+            estado = EstadoPrestamo(row["estado"])
+        except ValueError:
+            estado = EstadoPrestamo.ACTIVO
+
+        prestamo = Prestamo(
+            id_prestamo=id_uuid,
+            equipo=equipo,
+            fecha_inicial=fecha_ini,
+            fecha_limite=fecha_lim,
+            estado=estado,
+        )
+        prestamo.fecha_limite = fecha_lim
+        prestamo.tarifa_pactada = Decimal(str(row["tarifa_pactada"]))
+        prestamo.estudiante_id = row["estudiante_id"]
+        prestamo.equipo_id = row["equipo_id"]
+        prestamo.multa_id = row["multa_id"]
+        return prestamo
+
+    def eliminar(self, id: str) -> None:
+        """Elimina un préstamo por ID en SQLite."""
+        id_str = str(id)
+        conn = self._get_connection()
+        try:
+            with conn:
+                conn.execute("DELETE FROM prestamos WHERE id = ?", (id_str,))
+        finally:
+            if self.conexion_sqlite._memory_conn is None:
+                conn.close()
+
+    buscar_por_id = buscarPorId
+    obtener_todos = obtenerTodos
